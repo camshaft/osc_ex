@@ -3,7 +3,7 @@ defmodule Osc.Mixfile do
 
   def project do
     [app: :osc,
-     version: "0.1.0",
+     version: "0.1.1",
      elixir: "~> 1.0",
      description: "OSC encoder/decoder for elixir",
      build_embedded: Mix.env == :prod,
