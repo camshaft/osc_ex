@@ -42,8 +42,8 @@ defmodule Test.OSC do
   end
 
   defp timetag do
-    bind pos_integer, fn(time) ->
-      %OSC.TimeTag{time: time}
+    bind {pos_integer, pos_integer}, fn({seconds, fraction}) ->
+      %OSC.TimeTag{seconds: seconds, fraction: fraction}
     end
   end
 
