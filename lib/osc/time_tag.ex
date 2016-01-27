@@ -1,5 +1,5 @@
 defmodule OSC.TimeTag do
-  defstruct time: 0
+  defstruct time: 1
 
   def parse(<< time :: big-size(64) >>, options) do
     %__MODULE__{time: time}
