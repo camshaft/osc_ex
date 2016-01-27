@@ -33,18 +33,21 @@ defmodule OSC.Parser do
   def values(data, acc \\ [], options)
   def values(<<>>, acc, _), do: :lists.reverse(acc)
   def values(<< size :: big-size(64), message :: binary-size(size), rest :: binary >>, acc, options) do
-    parsed = parse_message(message, options)
-    values(rest, [parsed | acc], options)
+    acc = parse_message(message, acc, options)
+    values(rest, acc, options)
   end
   def values(bin, acc, options) do
-    parsed = parse_message(bin, options)
-    values(<<>>, [parsed | acc], options)
+    acc = parse_message(bin, acc, options)
+    values(<<>>, acc, options)
   end
 
-  defp parse_message("/" <> _ = message, options) do
-    OSC.Message.parse(message, options)
+  defp parse_message("", acc, _) do
+    acc
   end
-  defp parse_message("#bundle" <> _ = bundle, options) do
-    OSC.Bundle.parse(bundle, options)
+  defp parse_message("/" <> _ = message, acc, options) do
+    [OSC.Message.parse(message, options) | acc]
+  end
+  defp parse_message("#bundle" <> _ = bundle, acc, options) do
+    [OSC.Bundle.parse(bundle, options) | acc]
   end
 end

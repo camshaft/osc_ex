@@ -54,7 +54,7 @@ defmodule Test.OSC do
   end
 
   defp bundle do
-    bind {timetag, [message]}, fn({timetag, elements}) ->
+    bind {timetag, smaller(list(delay(content)), 4)}, fn({timetag, elements}) ->
       %OSC.Bundle{time: timetag, elements: elements}
     end
   end
@@ -63,7 +63,7 @@ defmodule Test.OSC do
     oneof([
       bundle,
       message,
-      nil
+      # nil
     ])
   end
 
