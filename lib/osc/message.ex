@@ -4,12 +4,12 @@ defmodule OSC.Message do
 
   def parse(message, options) do
     message
-    |> parse_string()
+    |> OSC.Parser.parse_string()
     |> parse_body(options)
   end
 
   defp parse_body({address, "," <> _ = body}, options) do
-    {flags_bin, rest} = parse_string(body)
+    {flags_bin, rest} = OSC.Parser.parse_string(body)
     flags = parse_flags(flags_bin, [])
     arguments = parse_arguments(flags, rest, [])
 
@@ -73,18 +73,16 @@ defmodule OSC.Message do
       parse_arguments(flags, rest, [unquote(type) | acc])
     end
   end
-  defp parse_arguments([:blob | flags], << size :: big-size(32), blob :: binary-size(size), rest :: binary >>, acc) do
-    rest = size
-    |> size_to_padding()
-    |> consume(rest)
+  defp parse_arguments([:blob | flags], bin, acc) do
+    {blob, rest} = OSC.Parser.parse_blob(bin)
     parse_arguments(flags, rest, [blob | acc])
   end
   defp parse_arguments([:string | flags], bin, acc) do
-    {string, rest} = parse_string(bin)
+    {string, rest} = OSC.Parser.parse_string(bin)
     parse_arguments(flags, rest, [string | acc])
   end
   defp parse_arguments([:atom | flags], bin, acc) do
-    {string, rest} = parse_string(bin)
+    {string, rest} = OSC.Parser.parse_string(bin)
     parse_arguments(flags, rest, [String.to_atom(string) | acc])
   end
   defp parse_arguments([:list_open | flags], bin, acc) do
@@ -93,32 +91,6 @@ defmodule OSC.Message do
   end
   defp parse_arguments([:list_close | flags], bin, acc) do
     {flags, bin, :lists.reverse(acc)}
-  end
-
-  defp parse_string(bin) do
-    [string, rest] = :binary.split(bin, <<0>>)
-    rest = string
-    |> byte_size()
-    |> size_to_padding()
-    |> consume(rest)
-    {string, rest}
-  end
-
-  defp size_to_padding(size) do
-    case rem(size, 4) do
-      0 -> 3
-      1 -> 2
-      2 -> 1
-      3 -> 0
-    end
-  end
-
-  defp consume(_, <<>>), do: <<>>
-  defp consume(0, rest), do: rest
-  for l <- 1..3 do
-    defp consume(unquote(l), <<_ :: binary-size(unquote(l)), rest :: binary>>) do
-      rest
-    end
   end
 end
 

@@ -30,6 +30,40 @@ defmodule OSC.Parser do
     end
   end
 
+  def parse_string(bin) do
+    [string, rest] = :binary.split(bin, <<0>>)
+    rest = string
+    |> byte_size()
+    |> size_to_padding()
+    |> consume(rest)
+    {string, rest}
+  end
+
+  def parse_blob(<< size :: big-size(32), blob :: binary-size(size), rest :: binary >>) do
+    rest = size
+    |> size_to_padding()
+    |> +(1)
+    |> consume(rest)
+    {blob, rest}
+  end
+
+  defp size_to_padding(size) do
+    case rem(size, 4) do
+      0 -> 3
+      1 -> 2
+      2 -> 1
+      3 -> 0
+    end
+  end
+
+  defp consume(_, <<>>), do: <<>>
+  defp consume(0, rest), do: rest
+  for l <- 1..4 do
+    defp consume(unquote(l), <<_ :: binary-size(unquote(l)), rest :: binary>>) do
+      rest
+    end
+  end
+
   def values(data, acc \\ [], options)
   def values(<<>>, acc, _), do: :lists.reverse(acc)
   def values(<< size :: big-size(64), message :: binary-size(size), rest :: binary >>, acc, options) do

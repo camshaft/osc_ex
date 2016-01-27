@@ -25,7 +25,7 @@ defmodule Test.OSC do
       int32,
       int64,
       bool,
-      # binary,
+      binary,
       string,
       nil
     ]

@@ -2,7 +2,7 @@ defmodule OSC.Bundle do
   defstruct time: %OSC.TimeTag{},
             elements: []
 
-  def parse(<< "#bundle", time :: binary-size(8), rest :: binary >>, options) do
+  def parse(<< "#bundle", 0, time :: binary-size(8), rest :: binary >>, options) do
     %__MODULE__{time: OSC.TimeTag.parse(time, options),
                 elements: OSC.Parser.values(rest, options)}
     |> OSC.Decoder.decode(options)
@@ -11,7 +11,7 @@ end
 
 defimpl OSC.Encoder, for: OSC.Bundle do
   def encode(%{time: time, elements: elements}, options) do
-    ["#bundle",
+    ["#bundle", 0,
      OSC.Encoder.encode(time, options),
      encode_elements(elements, options)]
   end
