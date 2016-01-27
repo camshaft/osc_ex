@@ -1,0 +1,155 @@
+defmodule OSC.Message do
+  defstruct address: "/",
+            arguments: []
+
+  def parse(message, options) do
+    message
+    |> parse_string()
+    |> parse_body(options)
+  end
+
+  defp parse_body({address, "," <> _ = body}, options) do
+    {flags_bin, rest} = parse_string(body)
+    flags = parse_flags(flags_bin, [])
+    arguments = parse_arguments(flags, rest, [])
+
+    new(address, arguments, options)
+  end
+  defp parse_body({address, <<>>}, options) do
+    new(address, [], options)
+  end
+
+  defp new(address, arguments, options) do
+    %__MODULE__{address: address,
+                arguments: arguments}
+    |> OSC.Decoder.decode(options)
+  end
+
+  types = [{?i, :int32, quote(do: big-signed-integer-size(32))},
+           {?f, :float, quote(do: big-signed-float-size(32))},
+           {?s, :string},
+           {?b, :blob},
+           {?h, :int64, quote(do: big-signed-float-size(64))},
+           {?t, :timetag},
+           {?d, :double, quote(do: big-signed-float-size(64))},
+           {?S, :atom},
+           {?c, :char, quote(do: big-unsigned-size(32))},
+           {?r, :rgba},
+           {?m, :midi, quote(do: binary-size(4))},
+           {?T, :true},
+           {?F, :false},
+           {?N, :nil},
+           {?I, :impulse},
+           {?[, :list_open},
+           {?], :list_close}]
+
+  defp parse_flags(<< ",", rest :: binary >>, flags) do
+    parse_flags(rest, flags)
+  end
+  for {char, type, _} <- types do
+    defp parse_flags(<< unquote(char), rest :: binary >>, flags) do
+      parse_flags(rest, [unquote(type) | flags])
+    end
+  end
+  for {char, type} <- types do
+    defp parse_flags(<< unquote(char), rest :: binary >>, flags) do
+      parse_flags(rest, [unquote(type) | flags])
+    end
+  end
+  defp parse_flags(<<>>, flags) do
+    :lists.reverse(flags)
+  end
+
+  defp parse_arguments([], <<>>, acc) do
+    :lists.reverse(acc)
+  end
+  for {_, type, spec} <- types do
+    defp parse_arguments([unquote(type) | flags], << int :: unquote(spec), rest :: binary>>, acc) do
+      parse_arguments(flags, rest, [int | acc])
+    end
+  end
+  for type <- [:true, :false, :nil] do
+    defp parse_arguments([unquote(type) | flags], rest, acc) do
+      parse_arguments(flags, rest, [unquote(type) | acc])
+    end
+  end
+  defp parse_arguments([:blob | flags], << size :: big-size(32), blob :: binary-size(size), rest :: binary >>, acc) do
+    rest = size
+    |> size_to_padding()
+    |> consume(rest)
+    parse_arguments(flags, rest, [blob | acc])
+  end
+  defp parse_arguments([:string | flags], bin, acc) do
+    {string, rest} = parse_string(bin)
+    parse_arguments(flags, rest, [string | acc])
+  end
+  defp parse_arguments([:atom | flags], bin, acc) do
+    {string, rest} = parse_string(bin)
+    parse_arguments(flags, rest, [String.to_atom(string) | acc])
+  end
+  defp parse_arguments([:list_open | flags], bin, acc) do
+    {flags, bin, list} = parse_arguments(flags, bin, [])
+    parse_arguments(flags, bin, [list | acc])
+  end
+  defp parse_arguments([:list_close | flags], bin, acc) do
+    {flags, bin, :lists.reverse(acc)}
+  end
+
+  defp parse_string(bin) do
+    [string, rest] = :binary.split(bin, <<0>>)
+    rest = string
+    |> byte_size()
+    |> size_to_padding()
+    |> consume(rest)
+    {string, rest}
+  end
+
+  defp size_to_padding(size) do
+    case rem(size, 4) do
+      0 -> 3
+      1 -> 2
+      2 -> 1
+      3 -> 0
+    end
+  end
+
+  defp consume(_, <<>>), do: <<>>
+  defp consume(0, rest), do: rest
+  for l <- 1..3 do
+    defp consume(unquote(l), <<_ :: binary-size(unquote(l)), rest :: binary>>) do
+      rest
+    end
+  end
+end
+
+defimpl OSC.Encoder, for: OSC.Message do
+  def encode(value, options) do
+    {flags, data} = Enum.reduce(value.arguments, {[], []}, fn
+      (argument, {[], []}) ->
+        encode_argument(argument, options, [?,], [])
+      (argument, {flags, data}) ->
+        encode_argument(argument, options, flags, data)
+    end)
+
+    [OSC.Encoder.BitString.encode(value.address, options),
+     pad(flags),
+     :lists.reverse(data)]
+  end
+
+  defp encode_argument(argument, options, flags, data) do
+    flag = OSC.Encoder.flag(argument)
+    value = OSC.Encoder.encode(argument, options)
+    {[flag | flags], [value | data]}
+  end
+
+  defp pad([]) do
+    []
+  end
+  defp pad(flags) do
+    flags
+    |> :lists.reverse()
+    |> OSC.Encoder.BitString.pad()
+  end
+
+  def flag(_), do: []
+end

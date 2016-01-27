@@ -1,2 +1,3 @@
 # osc_ex
-osc encoder/decoder for elixir
+
+OSC encoder/decoder for elixir
