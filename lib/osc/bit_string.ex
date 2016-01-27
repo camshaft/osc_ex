@@ -11,7 +11,7 @@ defimpl OSC.Encoder, for: BitString do
 
   defp encode_blob(value, _) do
     value
-    |> OSC.Encoder.prefix_size(32)
+    |> OSC.Encoder.prefix_size()
     |> pad()
   end
 

@@ -14,7 +14,7 @@ defprotocol OSC.Encoder do
   def encode(value, options)
   def flag(value)
 
-  Kernel.def prefix_size(data, size \\ 64) do
+  Kernel.def prefix_size(data, size \\ 32) do
     byte_size = :erlang.iolist_size(data)
     [<< byte_size :: big-size(size) >>, data]
   end

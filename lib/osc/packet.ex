@@ -7,9 +7,13 @@ defimpl OSC.Encoder, for: OSC.Packet do
     <<>>
   end
   def encode(%{contents: contents}, options) do
-    contents
-    |> OSC.Encoder.encode(options)
-    |> OSC.Encoder.prefix_size()
+    encoded = OSC.Encoder.encode(contents, options)
+    case options[:transport] do
+      :tcp ->
+        OSC.Encoder.prefix_size(encoded, 64)
+      _ ->
+        encoded
+    end
   end
 
   def flag(_), do: []

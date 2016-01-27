@@ -66,7 +66,7 @@ defmodule OSC.Parser do
 
   def values(data, acc \\ [], options)
   def values(<<>>, acc, _), do: :lists.reverse(acc)
-  def values(<< size :: big-size(64), message :: binary-size(size), rest :: binary >>, acc, options) do
+  def values(<< size :: big-size(32), message :: binary-size(size), rest :: binary >>, acc, options) do
     acc = parse_message(message, acc, options)
     values(rest, acc, options)
   end
