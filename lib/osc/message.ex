@@ -96,22 +96,15 @@ end
 
 defimpl OSC.Encoder, for: OSC.Message do
   def encode(value, options) do
-    {flags, data} = Enum.reduce(value.arguments, {[], []}, fn
-      (argument, {[], []}) ->
-        encode_argument(argument, options, [?,], [])
-      (argument, {flags, data}) ->
-        encode_argument(argument, options, flags, data)
+    {flags, data} = Enum.reduce(value.arguments, {[?,], []}, fn(argument, {flags, data}) ->
+      flag = OSC.Encoder.flag(argument)
+      value = OSC.Encoder.encode(argument, options)
+      {[flag | flags], [value | data]}
     end)
 
     [OSC.Encoder.BitString.encode(value.address, options),
      pad(flags),
      :lists.reverse(data)]
-  end
-
-  defp encode_argument(argument, options, flags, data) do
-    flag = OSC.Encoder.flag(argument)
-    value = OSC.Encoder.encode(argument, options)
-    {[flag | flags], [value | data]}
   end
 
   defp pad([]) do
